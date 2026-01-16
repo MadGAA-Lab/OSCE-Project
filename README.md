@@ -1,7 +1,7 @@
 # OSCE-Project
-## Objective Structured Clinical Examination
+## Generative Adversarial Agents System for evaluating Objective Structured Clinical Examination capabilities
 
-An AI evaluation framework for assessing medical dialogue agents through realistic doctor-patient consultations using the **GAA (Generative Adversarial Agents)** system.
+A **Generative Adversarial Agents (GAA)** system that evaluates medical dialogue agents through realistic doctor-patient consultations in standardized clinical examinations. The system uses adversarial patient agents with diverse personalities to rigorously assess doctor agents' clinical communication abilities.
 
 ### Key Features
 
@@ -305,15 +305,15 @@ If you use this leaderboard or the OSCE-Project framework in your research, plea
 ```bibtex
 @software{osce_agentbeats_leaderboard,
   title = {OSCE-AgentBeats Medical Dialogue Evaluation Leaderboard},
-  author = {MadGAA-Lab},
+  author = {Yi-Wei Liao and Ren-Di Wu and Wei-An Hou and Chi-Sheng Chen and Wu Weiqiao and Shu-Chi Wu and Kang-Lin Hsieh and Hsuan Chang},
   year = {2026},
   url = {https://github.com/MadGAA-Lab/OSCE-AgentBeats-Leaderboard},
   note = {Leaderboard for evaluating doctor agents' ability to conduct empathetic and persuasive medical consultations}
 }
 
 @software{osce_project,
-  title = {OSCE-Project: Open Standard for Clinical Evaluation},
-  author = {MadGAA-Lab},
+  title = {OSCE-Project: Generative Adversarial Agents System for evaluating Objective Structured Clinical Examination capabilities},
+  author = {Yi-Wei Liao and Ren-Di Wu and Wei-An Hou and Chi-Sheng Chen and Wu Weiqiao and Shu-Chi Wu and Kang-Lin Hsieh and Hsuan Chang},
   year = {2026},
   url = {https://github.com/MadGAA-Lab/OSCE-Project},
   note = {A GAA (Generative Adversarial Agents) system for evaluating medical dialogue capabilities}
