@@ -12,6 +12,30 @@ A **Generative Adversarial Agents (GAA)** system that evaluates medical dialogue
 - 🔬 **Information Asymmetry** - Doctor receives only clinical data; patient personality and symptoms remain hidden
 - ✅ **Reproducible** - Built on [AgentBeats](https://agentbeats.dev) platform using A2A protocol
 
+## Table of Contents
+
+- [Quickstart](#quickstart)
+- [Project Structure](#project-structure)
+- [Medical Dialogue Evaluation](#medical-dialogue-evaluation)
+  - [Patient Personas](#patient-personas)
+  - [Round-Based Evaluation Process](#round-based-evaluation-process)
+  - [Information Asymmetry Design](#information-asymmetry-design)
+- [System Architecture](#system-architecture)
+  - [Evaluation Flow](#evaluation-flow)
+- [System Components](#system-components)
+  - [Green Agents (Evaluation System)](#green-agents-evaluation-system)
+  - [Purple Agents (Evaluated)](#purple-agents-evaluated)
+- [Developing Purple Agents](#developing-purple-agents)
+  - [1. Create your Agent](#1-create-your-agent)
+  - [2. Configure the Scenario](#2-configure-the-scenario)
+  - [3. Agent Interface](#3-agent-interface)
+  - [4. Run the Evaluation](#4-run-the-evaluation)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Citation](#citation)
+
 ## Quickstart
 
 1. Clone the repo
