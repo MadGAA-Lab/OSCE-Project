@@ -1,4 +1,5 @@
 # OSCE-Project
+
 ## Generative Adversarial Agents System for evaluating Objective Structured Clinical Examination capabilities
 
 A **Generative Adversarial Agents (GAA)** system that evaluates medical dialogue agents through realistic doctor-patient consultations in standardized clinical examinations. The system uses adversarial patient agents with diverse personalities to rigorously assess doctor agents' clinical communication abilities.
@@ -6,7 +7,7 @@ A **Generative Adversarial Agents (GAA)** system that evaluates medical dialogue
 ### Key Features
 
 - 🏥 **Medical Dialogue Evaluation** - Evaluates doctor agents' communication and persuasion abilities
-- 🧠 **64 Patient Personas** - 16 MBTI personality types × 2 medical conditions × 2 genders  
+- 🧠 **64 Patient Personas** - 16 MBTI personality types × 2 medical conditions × 2 genders
 - 📊 **Multi-Dimensional Scoring** - Real-time evaluation of empathy, persuasion, and patient safety
 - 🔬 **Information Asymmetry** - Doctor receives only clinical data; patient personality and symptoms remain hidden
 - ✅ **Reproducible** - Built on [AgentBeats](https://agentbeats.dev) platform using A2A protocol
@@ -14,23 +15,28 @@ A **Generative Adversarial Agents (GAA)** system that evaluates medical dialogue
 ## Quickstart
 
 1. Clone the repo
+
 ```bash
 git clone https://github.com/MadGAA-Lab/OSCE-Project.git
 cd OSCE-Project
 ```
 
 2. Install dependencies
+
 ```bash
 uv sync
 ```
 
 3. Set environment variables
+
 ```bash
 cp sample.env .env
 ```
+
 Add your API credentials to the `.env` file (supports OpenAI, Anthropic, Google Gemini, etc.)
 
 4. Run evaluation
+
 ```bash
 uv run agentbeats-run scenarios/medical_dialogue/scenario.toml
 ```
@@ -68,7 +74,7 @@ scenarios/medical_dialogue/  # Medical dialogue evaluation
 ### Patient Personas
 
 - **16 MBTI Types**: INTJ, INTP, ENTJ, ENTP, INFJ, INFP, ENFJ, ENFP, ISTJ, ISFJ, ESTJ, ESFJ, ISTP, ISFP, ESTP, ESFP
-- **2 Medical Cases**: Pneumothorax, Lung Cancer  
+- **2 Medical Cases**: Pneumothorax, Lung Cancer
 - **2 Genders**: Male, Female (optional)
 
 ### Round-Based Evaluation Process
@@ -84,11 +90,13 @@ scenarios/medical_dialogue/  # Medical dialogue evaluation
 ### Information Asymmetry Design
 
 **Doctor receives:**
+
 - Age, gender (if specified)
 - Diagnosis and recommended treatment
 - Treatment risks, benefits, and prognosis
 
 **Doctor does NOT receive:**
+
 - Patient symptoms (must discover through dialogue)
 - Patient personality traits (MBTI)
 - Patient concerns and fears
@@ -105,60 +113,60 @@ graph TB
     subgraph "AgentBeats Platform"
         Runner[Scenario Runner]
     end
-    
+
     subgraph "Green Agents - Evaluation System"
         Judge[Judge Agent<br/>Central Orchestrator]
-        
+
         subgraph "Patient Simulation"
             PersonaMgr[Persona Manager<br/>64 Personas]
             PatientConst[Patient Constructor<br/>Generate Personas]
             PatientAgent[Patient Agent<br/>MBTI-driven Behavior]
         end
-        
+
         subgraph "Evaluation Components"
             PerRoundScore[Per-Round Scoring<br/>LLM-as-Judge]
             StopDetector[Stop Detector<br/>Termination Logic]
             ReportGen[Report Generator<br/>Final Analysis]
         end
-        
+
         Criteria[(Criteria CSV<br/>30 Evaluation Criteria)]
     end
-    
+
     subgraph "Purple Agent - Under Evaluation"
         Doctor[Doctor Agent<br/>Being Tested]
     end
-    
+
     %% Initialization Flow
     Runner -->|1. Start Evaluation| Judge
     Judge -->|2. Get Persona| PersonaMgr
     PersonaMgr -->|3. Load Templates| PatientConst
     PatientConst -->|4. Generate Background| PatientAgent
     PatientConst -->|5. Clinical Info| Judge
-    
+
     %% Round-based Dialogue Loop
     Judge -->|6. Clinical Context| Doctor
     Doctor -->|7. Doctor Response| Judge
     Judge -->|8. Doctor Message| PatientAgent
     PatientAgent -->|9. Patient Response| Judge
-    
+
     %% Evaluation Flow
     Judge -->|10. Evaluate Round| PerRoundScore
     Criteria -->|Evaluation Criteria| PerRoundScore
     PerRoundScore -->|11. Scores<br/>Empathy/Persuasion/Safety| Judge
-    
+
     Judge -->|12. Check Stop| StopDetector
     StopDetector -->|13. Continue/Stop| Judge
-    
+
     %% Final Report
     Judge -->|14. Generate Report| ReportGen
     ReportGen -->|15. Final Analysis| Runner
-    
+
     %% Styling
     classDef green fill:#90EE90,stroke:#228B22,stroke-width:2px
     classDef purple fill:#DDA0DD,stroke:#8B008B,stroke-width:2px
     classDef data fill:#87CEEB,stroke:#4682B4,stroke-width:2px
     classDef eval fill:#FFD700,stroke:#FF8C00,stroke-width:2px
-    
+
     class Judge,PersonaMgr,PatientConst,PatientAgent green
     class Doctor purple
     class Criteria data
@@ -170,6 +178,7 @@ graph TB
 The system follows a sophisticated multi-round evaluation process:
 
 #### Phase 1: Initialization
+
 1. **Scenario Runner** starts evaluation with persona configuration
 2. **Judge Agent** receives evaluation request with persona IDs and max rounds
 3. **Persona Manager** selects personas (e.g., INTJ_M_PNEUMO)
@@ -180,6 +189,7 @@ The system follows a sophisticated multi-round evaluation process:
    - Roleplay examples → for context priming
 
 #### Phase 2: Round-Based Dialogue Loop
+
 For each round (max 10 rounds):
 
 5. **Judge** sends clinical context to **Doctor Agent**:
@@ -215,6 +225,7 @@ For each round (max 10 rounds):
 10. Loop continues or stops based on stop condition
 
 #### Phase 3: Final Report Generation
+
 11. **Report Generator** creates comprehensive analysis:
     - Aggregate scores across all rounds (weighted 30/40/30)
     - Qualitative analysis: strengths, weaknesses, key moments
@@ -228,15 +239,15 @@ For each round (max 10 rounds):
 
 The system creates realistic doctor-patient dynamics through information asymmetry:
 
-| Information | Doctor Has | Patient Has | Judge Has |
-|------------|------------|-------------|-----------|
-| Patient Personality (MBTI) | ❌ | ✅ | ✅ |
-| Patient Symptoms | ❌ | ✅ | ✅ |
-| Patient Concerns/Fears | ❌ | ✅ | ✅ |
-| Medical Diagnosis | ✅ | ✅ | ✅ |
-| Treatment Details | ✅ | ✅ | ✅ |
-| Dialogue History | ✅ | ✅ | ✅ |
-| Evaluation Scores | ❌ | ❌ | ✅ |
+| Information                | Doctor Has | Patient Has | Judge Has |
+| -------------------------- | ---------- | ----------- | --------- |
+| Patient Personality (MBTI) | ❌         | ✅          | ✅        |
+| Patient Symptoms           | ❌         | ✅          | ✅        |
+| Patient Concerns/Fears     | ❌         | ✅          | ✅        |
+| Medical Diagnosis          | ✅         | ✅          | ✅        |
+| Treatment Details          | ✅         | ✅          | ✅        |
+| Dialogue History           | ✅         | ✅          | ✅        |
+| Evaluation Scores          | ❌         | ❌          | ✅        |
 
 This mirrors real medical consultations where doctors must discover patient information through conversation.
 
@@ -280,12 +291,131 @@ judge_max_retries = 5
 
 For detailed configuration options, see [scenarios/medical_dialogue/README.md](scenarios/medical_dialogue/README.md).
 
+## Developing Purple Agents
+
+Purple Agents are the medical doctor agents being evaluated by the system. You can create your own doctor agent to test different prompting strategies, models, or architectures.
+
+### 1. Create your Agent
+
+Create a new file (e.g., `my_doctor.py`) that implements the A2A protocol. You can use the provided example as a template:
+
+`scenarios/medical_dialogue/purple_agents/doctor_agent.py`
+
+Your agent needs to:
+
+- Accept a port number argument
+- Expose an A2A-compatible HTTP endpoint
+- Handle conversation history and generate appropriate medical responses
+
+### 2. Configure the Scenario
+
+Update `scenarios/medical_dialogue/scenario.toml` to use your agent:
+
+```toml
+[[participants]]
+role = "doctor"
+endpoint = "http://127.0.0.1:9019"
+cmd = "python path/to/your/my_doctor.py --host 127.0.0.1 --port 9019"
+```
+
+### 3. Agent Interface
+
+Your agent will receive a prompt containing three key sections. It must generate a single text response representing the doctor's dialogue.
+
+#### Input Format
+
+The system sends a text prompt to your agent containing:
+
+1.  **Clinical Context**: Patient age, gender, diagnosis, and treatment plan.
+2.  **Treatment Data**: Detailed risks, benefits, and prognosis statistics.
+3.  **Dialogue History**: Full transcript of the conversation so far (if any).
+
+**Example Input:**
+
+```text
+You are a doctor consulting with a patient about recommended surgical treatment.
+
+=== Patient Clinical Information ===
+Age: 45
+Gender: Male
+Medical Case: Pneumothorax
+Diagnosis: Large primary spontaneous pneumothorax
+Recommended Treatment: Video-assisted thoracoscopic surgery (VATS)
+
+=== Treatment Details ===
+Risks: Infection (1%), Bleeding (<1%), Recurrence (5%)
+Benefits: High success rate (>95%), shorter hospital stay
+Prognosis with Treatment: Full recovery expected in 2-4 weeks
+Prognosis without Treatment: High risk of tension pneumothorax (life threatening)
+
+=== Dialogue History ===
+DOCTOR: Hello, I'm Dr. Smith. I'd like to discuss your test results.
+PATIENT: Hi doctor, I'm a bit nervous. Is it bad?
+
+Now provide your next response to the patient.
+```
+
+> [!NOTE]
+> You can decompose the input into three sections: clinical context, treatment details, and dialogue history for more advanced implementation. See more details in [Helper Utilities](#helper-utilities).
+
+#### Handling Logic
+
+Your agent should:
+
+- **Adopt the Doctor Persona**: Be professional, empathetic, and clear.
+- **Use Provided Info**: Rely _only_ on the provided clinical data. Do not hallucinate symptoms not pertinent to the case.
+- **Discover Hidden Info**: You do NOT know the patient's thinking or personality. You must ask questions to uncover them.
+- **Drive the Conversation**: Your goal is to explain the diagnosis/treatment and persuade the patient to accept it.
+
+#### Expected Output
+
+- **Format**: Plain text string.
+- **Content**: The spoken response to the patient.
+- **Style**: Natural, conversational medical dialogue (avoid complex markdown or non-dialogue text).
+
+#### Helper Utilities
+
+To help you parse the unstructured prompt into structured data, we provide a helper utility:
+`scenarios/medical_dialogue/purple_agents/context_parser.py`
+
+**Usage Example:**
+
+```python
+from context_parser import parse_context
+
+def handle_request(prompt: str):
+    # Decompose the prompt into structured data
+    data = parse_context(prompt)
+
+    clinical_info = data['clinical_info']
+    # {'Age': '45', 'Medical Case': 'Pneumothorax', ...}
+
+    formatted_history = data['dialogue_history']
+    # [{'speaker': 'DOCTOR', 'message': '...'}, {'speaker': 'PATIENT', 'message': '...'}]
+
+    instruction = data['instruction']
+    # "Note: The patient will describe..." OR "Now provide your next response..."
+
+    if data['is_first_turn']:
+        return generate_greeting(clinical_info, instruction)
+    else:
+        return generate_response(formatted_history, instruction)
+```
+
+### 4. Run the Evaluation
+
+Run the standard evaluation command:
+
+```bash
+uv run agentbeats-run scenarios/medical_dialogue/scenario.toml
+```
+
 ## Contributing
 
 Contributions are welcome! Areas of interest:
 
 - Additional medical conditions and cases
-- New patient personality models beyond MBTI  
+- New patient personality models beyond MBTI
 - Enhanced scoring metrics
 - Multi-language support
 - Performance optimizations
