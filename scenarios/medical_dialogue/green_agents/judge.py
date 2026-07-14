@@ -47,6 +47,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("medical_judge")
 
 
+def _mask_secrets(value):
+    """遞迴遮罩 config 中的機密欄位（api_key/token/secret），供日誌輸出用。
+
+    日誌會經 bridge 廣播到前端並落盤，絕不能含明文金鑰。
+    """
+    if isinstance(value, dict):
+        return {
+            k: ('***' if isinstance(v, str) and any(s in k.lower() for s in ('api_key', 'apikey', 'token', 'secret'))
+                else _mask_secrets(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_mask_secrets(v) for v in value]
+    return value
+
+
 class MedicalJudge(GreenAgent):
     """
     Judge Agent - Central round orchestrator
@@ -145,7 +161,11 @@ class MedicalJudge(GreenAgent):
     
     async def run_eval(self, req: EvalRequest, updater: TaskUpdater) -> None:
         """Run complete evaluation across personas (uses base EvalRequest)"""
-        logger.info(f"Starting medical dialogue evaluation: {req}")
+        # 不能直接 log req：config 內含各 provider 的明文 api_key
+        logger.info(
+            f"Starting medical dialogue evaluation: participants={req.participants} "
+            f"config={_mask_secrets(req.config)}"
+        )
         
         # Configure retry settings from TOML config
         self.configure_retry_settings(req.config)

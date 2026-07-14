@@ -5,6 +5,7 @@ Per-Round Scoring Engine - LLM-based evaluation of each dialogue round
 import csv
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from openai import OpenAI
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
@@ -92,47 +93,62 @@ class PerRoundScoringEngine:
     ) -> RoundEvaluation:
         """
         Evaluate a single dialogue round using criteria-based judgment
-        
-        Evaluates one category at a time for better LLM performance:
+
+        Evaluates one category per LLM call for better LLM performance:
         1. Empathy criteria (1-10)
         2. Persuasion criteria (11-20)
         3. Safety criteria (21-30)
         4. Stop condition assessment
-        
+
+        這 4 個呼叫互相獨立（各自只讀入參與唯讀的 self.criteria），
+        因此用執行緒池並行送出 — 單回合評分時間從「4 次呼叫相加」
+        降為「最慢一次呼叫」（實測 ~60s → ~15s）。
+
         Args:
             round_number: Current round number
             doctor_message: Doctor's message in this round
             patient_response: Patient's response in this round
             dialogue_history: Full dialogue history so far (for context)
             max_rounds: Maximum rounds configured (for stop condition check)
-        
+
         Returns:
             RoundEvaluation with criteria-based scores and stop decision
         """
         logger.info(f"Evaluating round {round_number}")
-        
-        # Evaluate each category separately
-        all_criteria_evals = []
-        
-        for category in ['Empathy', 'Persuasion', 'Safety']:
-            category_evals = self._evaluate_category(
-                category=category,
+
+        categories = ['Empathy', 'Persuasion', 'Safety']
+
+        # Fan out the 3 category evaluations + stop condition concurrently.
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            category_futures = {
+                category: executor.submit(
+                    self._evaluate_category,
+                    category=category,
+                    round_number=round_number,
+                    doctor_message=doctor_message,
+                    patient_response=patient_response,
+                    dialogue_history=dialogue_history
+                )
+                for category in categories
+            }
+            stop_future = executor.submit(
+                self._evaluate_stop_condition,
                 round_number=round_number,
                 doctor_message=doctor_message,
                 patient_response=patient_response,
-                dialogue_history=dialogue_history
+                dialogue_history=dialogue_history,
+                max_rounds=max_rounds
             )
-            all_criteria_evals.extend(category_evals)
-            logger.info(f"Round {round_number}: {category} evaluation complete ({len(category_evals)} criteria)")
-        
-        # Evaluate stop condition separately
-        stop_eval = self._evaluate_stop_condition(
-            round_number=round_number,
-            doctor_message=doctor_message,
-            patient_response=patient_response,
-            dialogue_history=dialogue_history,
-            max_rounds=max_rounds
-        )
+
+            # Collect in fixed category order so criteria_evaluations keeps the
+            # same ordering as the previous sequential implementation.
+            all_criteria_evals = []
+            for category in categories:
+                category_evals = category_futures[category].result()
+                all_criteria_evals.extend(category_evals)
+                logger.info(f"Round {round_number}: {category} evaluation complete ({len(category_evals)} criteria)")
+
+            stop_eval = stop_future.result()
         
         # Calculate scores from criteria evaluations
         scores = self._calculate_scores_from_criteria(all_criteria_evals)

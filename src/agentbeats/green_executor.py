@@ -1,3 +1,4 @@
+import json
 from abc import abstractmethod
 from pydantic import ValidationError
 
@@ -18,6 +19,23 @@ from a2a.utils import (
 from a2a.utils.errors import ServerError
 
 from agentbeats.models import EvalRequest
+
+
+def _mask_secrets(value):
+    """Recursively mask secret-bearing fields (api_key/token/secret) for logging.
+
+    Status messages are relayed to observers (bridge/frontend logs), so the
+    raw EvalRequest must never be echoed verbatim.
+    """
+    if isinstance(value, dict):
+        return {
+            k: ('***' if isinstance(v, str) and any(s in k.lower() for s in ('api_key', 'apikey', 'token', 'secret'))
+                else _mask_secrets(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_mask_secrets(v) for v in value]
+    return value
 
 
 class GreenAgent:
@@ -58,9 +76,11 @@ class GreenExecutor(AgentExecutor):
             raise ServerError(error=InvalidParamsError(message="Missing message."))
 
         updater = TaskUpdater(event_queue, task.id, task.context_id)
+        # Mask credentials before echoing the request into the status stream.
+        masked_req = json.dumps(_mask_secrets(req.model_dump(mode="json")))
         await updater.update_status(
             TaskState.working,
-            new_agent_text_message(f"Starting assessment.\n{req.model_dump_json()}", context_id=context.context_id)
+            new_agent_text_message(f"Starting assessment.\n{masked_req}", context_id=context.context_id)
         )
 
         try:
