@@ -47,6 +47,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("medical_judge")
 
 
+# 對話語言指令：附加到醫師 context 與病人 persona prompt 尾端。
+# 評審（judge）維持英文準則評分 — LLM 可直接評閱中文對話。
+DIALOGUE_LANGUAGE_DIRECTIVES = {
+    "zh-TW": (
+        "\n\nIMPORTANT — Language requirement: Conduct this conversation entirely in "
+        "Traditional Chinese as used in Taiwan (繁體中文，台灣用語). Every one of your "
+        "replies must be written only in natural, spoken Traditional Chinese. "
+        "Do not reply in English."
+    ),
+}
+
+
 def _mask_secrets(value):
     """遞迴遮罩 config 中的機密欄位（api_key/token/secret），供日誌輸出用。
 
@@ -173,6 +185,8 @@ class MedicalJudge(GreenAgent):
         try:
             doctor_url = str(req.participants["doctor"])
             max_rounds = int(req.config["max_rounds"])
+            # 對話語言（'en' | 'zh-TW'）：跟隨前端介面語言，注入醫師/病人 prompt
+            dialogue_language = req.config.get("dialogue_language", "en")
             persona_ids = self.persona_manager.expand_persona_ids(req.config["persona_ids"])
             
             await updater.update_status(
@@ -197,7 +211,8 @@ class MedicalJudge(GreenAgent):
                     persona_id=persona_id,
                     doctor_url=doctor_url,
                     max_rounds=max_rounds,
-                    updater=updater
+                    updater=updater,
+                    dialogue_language=dialogue_language
                 )
                 
                 sessions.append(session)
@@ -256,23 +271,32 @@ class MedicalJudge(GreenAgent):
         persona_id: str,
         doctor_url: str,
         max_rounds: int,
-        updater: TaskUpdater
+        updater: TaskUpdater,
+        dialogue_language: str = "en"
     ) -> tuple[DialogueSession, PerformanceReport]:
         """
         Run complete dialogue session for one persona
-        
+
+        Args:
+            dialogue_language: 'en'（預設，不注入指令）或 'zh-TW'（醫師與病人
+                均以繁體中文對話；persona 生成與評分仍為英文）
+
         Returns:
             tuple: (DialogueSession, PerformanceReport)
         """
         session_id = str(uuid4())
-        logger.info(f"Starting dialogue session {session_id} with persona {persona_id}")
-        
+        logger.info(f"Starting dialogue session {session_id} with persona {persona_id} (language={dialogue_language})")
+
+        # 語言指令：'en' 取回空字串，行為與原本完全一致
+        language_directive = DIALOGUE_LANGUAGE_DIRECTIVES.get(dialogue_language, "")
+
         # Construct patient persona (now returns tuple with background, clinical info, and roleplay examples)
         persona, background, clinical_info, roleplay_examples = self.patient_constructor.construct_patient_persona(persona_id)
-        
+
         # Initialize patient agent with retry config and roleplay examples
         patient = PatientAgent(
-            self._client, self._model, persona.character_description,
+            self._client, self._model,
+            persona.character_description + language_directive,
             max_retries=self.patient_max_retries,
             retry_delay=self.patient_retry_delay,
             use_roleplay_context=True,
@@ -302,7 +326,7 @@ class MedicalJudge(GreenAgent):
             
             # === Doctor's turn ===
             # Send PatientClinicalInfo + dialogue history to doctor
-            doctor_context = self._build_doctor_context(clinical_info, session.turns)
+            doctor_context = self._build_doctor_context(clinical_info, session.turns, language_directive)
             
             logger.info(f"Requesting doctor's response...")
             doctor_message = await self._tool_provider.talk_to_agent(
@@ -418,11 +442,12 @@ class MedicalJudge(GreenAgent):
     @staticmethod
     def _build_doctor_context(
         clinical_info: PatientClinicalInfo,
-        turns: list[DialogueTurn]
+        turns: list[DialogueTurn],
+        language_directive: str = ""
     ) -> str:
         """
         Build context message for doctor (clinical info + dialogue history)
-        
+
         IMPORTANT: Only includes clinical info that a real doctor would have.
         Does NOT include: symptoms (patient reports), personality, concerns, lifestyle.
         """
@@ -461,8 +486,9 @@ This is your first message to the patient. Your goal is to:
 5. Persuade the patient to accept the recommended treatment
 
 Provide your opening message to the patient."""
-        
-        return context
+
+        # 語言指令放最後（recency 對指令遵循最有效）；英文時為空字串
+        return context + language_directive
 
     @staticmethod
     def _build_dialogue_transcript(turns: list[DialogueTurn]) -> str:
