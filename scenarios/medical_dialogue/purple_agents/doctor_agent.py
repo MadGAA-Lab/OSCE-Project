@@ -35,7 +35,7 @@ def main():
     # Get configuration from args or environment
     api_key = args.api_key or os.getenv("API_KEY")
     base_url = args.base_url or os.getenv("BASE_URL")
-    model = args.model or os.getenv("DEFAULT_MODEL", "gemini-2.0-flash")
+    model = args.model or os.getenv("DEFAULT_MODEL", "gemini-3.5-flash")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
     
     # Configure model based on provider

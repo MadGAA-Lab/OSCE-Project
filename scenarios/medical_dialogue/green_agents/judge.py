@@ -41,6 +41,7 @@ from patient_agent import PatientAgent
 from per_round_scoring import PerRoundScoringEngine
 from stop_detector import StopConditionDetector
 from report_generator import ReportGenerator
+from rotating_openai import RotatingOpenAI, parse_api_keys
 
 
 logging.basicConfig(level=logging.INFO)
@@ -344,7 +345,7 @@ class MedicalJudge(GreenAgent):
             )
             session.turns.append(doctor_turn)
             
-            logger.info(f"Doctor: {doctor_message[:100]}...")
+            logger.info(f"Doctor: {doctor_message}")
             
             # Show doctor's message in status update
             await updater.update_status(
@@ -365,7 +366,7 @@ class MedicalJudge(GreenAgent):
             )
             session.turns.append(patient_turn)
             
-            logger.info(f"Patient: {patient_response[:100]}...")
+            logger.info(f"Patient: {patient_response}")
             
             # Show patient's message in status update
             await updater.update_status(
@@ -560,26 +561,36 @@ async def main():
     parser.add_argument("--card-url", type=str, help="External URL for agent card")
     parser.add_argument("--cloudflare-quick-tunnel", action="store_true", help="Use Cloudflare quick tunnel")
     parser.add_argument("--api-key", type=str, help="API key for model provider")
+    parser.add_argument(
+        "--api-keys",
+        type=str,
+        help="Comma-separated API keys; rotates on HTTP 401, 403, or 429",
+    )
     parser.add_argument("--base-url", type=str, help="Base URL for API endpoint")
     parser.add_argument("--model", type=str, help="Model to use")
     args = parser.parse_args()
     
     # Get configuration
-    api_key = args.api_key or os.getenv("API_KEY")
+    api_keys = parse_api_keys(
+        args.api_keys,
+        args.api_key,
+        os.getenv("API_KEYS"),
+        os.getenv("API_KEY"),
+    )
     base_url = args.base_url or os.getenv("BASE_URL")
-    model = args.model or os.getenv("DEFAULT_MODEL", "gpt-4")
+    model = args.model or os.getenv("DEFAULT_MODEL", "gpt-5.5")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
     
     # Create OpenAI client
     client_kwargs = {
-        "api_key": api_key,
         "base_url": base_url,
     }
     
-    if azure_api_version:
+    # Do not leak Azure-only headers into Grok/Gemini-compatible requests.
+    if azure_api_version and base_url and "azure" in base_url.lower():
         client_kwargs["default_headers"] = {"api-version": azure_api_version}
     
-    client = OpenAI(**client_kwargs)
+    client = RotatingOpenAI(api_keys, **client_kwargs)
     
     if args.cloudflare_quick_tunnel:
         from agentbeats.cloudflare import quick_tunnel
